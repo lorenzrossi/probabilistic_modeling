@@ -1,8 +1,11 @@
 ---
-title: "The implementation of Bayesian Networks in African recessions analysis"
+title: "Probabilistic modeling for causal inference applied to African economic recessions"
 author: "Lorenzo Rossi"
 date: "24/04/2022"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document: default
+abstract: The paper 
 ---
 
 ```{r setup, include=FALSE}
@@ -43,16 +46,17 @@ only on its parents $ΠXi$
 Understanding cause-effect relationships between variables is of primary interest in many fields
 of science. Usually, experimental intervention is used to find these relationships. In many
 settings, however, experiments are infeasible because of time, cost or ethical constraints.
-More precisely, the causal effect C(V1, V6, x˜) of V1 from V1 = ˜x on V6 is defined as... 
+More precisely, the causal effect $C(V_1, V_6, x)$ of $V_1$ from $V_1 = x$ on $V_6$ is defined as... 
 If the causal relationships are linear, the causal effect is independent of ˜x.
 Since the causal structure was not identified uniquely in our example, we cannot expect to get a unique number for the causal effect
 
-Let G = (V, E) be a graph consisting of a set of vertices V
-and a set of edges E ⊆ V × V. The set of vertices that are
-adjacent to A in graph G is defined as: adj(A, G) = {B :
-(A, B) ∈ E or(B, A) ∈ E}. B is called a collider if we have
-the v-structure: A → B ← C.
-Graph G is a Directed Acyclic Graph (DAG) if G contains
+Let $G = (V, E)$ be a graph consisting of a set of vertices V
+and a set of edges $E ⊆ V × V$. The set of vertices that are
+adjacent to A in graph G is defined as: 
+\centering $adj(A, G) = {B : (A, B) ∈ E$ or $(B, A) ∈ E}$.
+B is called a collider if we have
+the v-structure: $A → B ← C$.
+Graph $G$ is a Directed Acyclic Graph (DAG) if $G$ contains
 only directed edges and has no directed cycles. The skeleton
 of a DAG G is the undirected graph obtained from G by
 ignoring the direction of the edges. An equivalence class of
