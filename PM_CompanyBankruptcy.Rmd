@@ -1,3 +1,74 @@
+---
+title: "Probabilistic modeling for causal inference applied to company bankruptcy"
+author: "Lorenzo Rossi"
+date: "26/04/2022"
+output:
+  pdf_document: default
+  html_document: default
+abstract: The paper aims to study the causes of company bankruptcies implementing probabilistic modeling algorhitms such as mixed graphical models in order to study causality and to make inference on the factors that lead to bankruptcy. The conclusion is that Probabilistic modeling techniques are as performant as other Supervised Learning algorhitm, generally leading to the same results. 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Introduction
+
+This paper will focus on studying the main causes of company bankruptcies 
+
+#Literature Overview
+
+
+
+#Theoretical Framework
+
+
+##Mixed Graphical Model
+
+##The PC algorhitm 
+Understanding cause-effect relationships between variables is of primary interest in many fields
+of science. Usually, experimental intervention is used to find these relationships. In many
+settings, however, experiments are infeasible because of time, cost or ethical constraints.
+More precisely, the causal effect $C(V_1, V_6, x)$ of $V_1$ from $V_1 = x$ on $V_6$ is defined as... 
+If the causal relationships are linear, the causal effect is independent of ˜x.
+Since the causal structure was not identified uniquely in our example, we cannot expect to get a unique number for the causal effect
+
+Let $G = (V, E)$ be a graph consisting of a set of vertices V
+and a set of edges $E ⊆ V × V$. The set of vertices that are
+adjacent to A in graph G is defined as: 
+\centering $adj(A, G) = {B : (A, B) ∈ E$ or $(B, A) ∈ E}$.
+B is called a collider if we have
+the v-structure: $A → B ← C$.
+Graph $G$ is a Directed Acyclic Graph (DAG) if $G$ contains
+only directed edges and has no directed cycles. The skeleton
+of a DAG G is the undirected graph obtained from G by
+ignoring the direction of the edges. An equivalence class of
+DAGs is the set of DAGs which have the same skeleton
+and the same v-structures. An equivalence class of DAGs
+can be uniquely described by a completed partially directed
+acyclic graph (CPDAG) which includes both directed and
+undirected edges.
+
+The first step of the algorithm consist of to build the skeleton graph: for each pair of vertices u and v,
+
+It assigns the directions to the edges in the skeleton, using the list of conditional independencies found during the Step 1. The output is completed partially directed acyclic graph, a mixed graph where there are both directed and bidirected arcs.
+
+The PC algorithm [2] (original-PC algorithm henceforward)
+has two main steps. In the first step, it learns from data a
+skeleton graph, which contains only undirected edges. In
+the second step, it orients the undirected edges to form
+an equivalence class of DAGs. As the first step of the PC
+algorithm contributes to most of the computational costs, we
+only focus on the modification of this skeleton learning step
+in this paper, and information about the edge orientation
+step can be found in [2].
+The theoretical foundation of the original-PC algorithm
+[2] is that if there is no link (edge) between nodes X and Y ,
+then there is a set of vertices Z that either are neighbours of
+X or Y such that X and Y are independent conditioning on
+Z. In other words, Z disconnects X and Y
+
+```{r}
 library(readxl)
 library(PerformanceAnalytics)
 library(corrplot)
@@ -44,11 +115,12 @@ library(rpart)
 library(rpart.plot) 
 library(RColorBrewer)      
 library(party)                  
-library(partykit)  
-library(gbm)
+library(partykit)               
 
 cb <- read.csv('BankruptcyFinal.csv')
+```
 
+```{r}
 barplot(table(cb$Bankrupt.),col=rainbow(2),
         main="Frequency of Bankruptcy",
         xlab="Recession Tag",
@@ -56,7 +128,9 @@ barplot(table(cb$Bankrupt.),col=rainbow(2),
 
 cb_balanced <- ROSE(Bankrupt. ~ ., data=cb, seed = 123)$data
 
-#GLASSO FOR VARS BEHAVIOUR
+```
+
+```{r}
 
 #rho = 0.1
 S.cb <- cov.wt(cb_balanced, method="ML")$cov
@@ -115,7 +189,10 @@ plot(as(glasso.cp5 ,"igraph"),vertex.color="red",vertex.label.dist=0.5,alpha=TRU
      vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
      layout=layout_with_fr(as(glasso.cp5,'igraph')), vertex.label.family='Helvetica')
 
+```
 
+
+```{r}
 #minforest
 
 bf<-minForest(cb_balanced)
@@ -124,9 +201,12 @@ mbG<-stepw(model=bf,data=cb_balanced)
 plot(bf,cex.vert.label=0.6,numIter=6000,col.labels=c("red"), edge.size = 0.5, vert.hl=c(31),col.hl=c("blue"),energy=TRUE)
 
 plot(mbG,cex.vert.label=0.6,numIter=6000,col.labels=c("red"),vert.hl=c(31),col.hl=c("blue"),energy=TRUE)
+```
 
-#MGM + ROC curve
+```{r}
+#MGM 
 
+#fit + plot
 fit_mgm <- mgm(data = cb_balanced,type = c(rep("g",30), "c"), levels = c(rep(1,30),2),k=3,lambdaSel = "CV",
                lambdaFolds=10,ruleReg="AND",overparameterize = T)
 
@@ -137,7 +217,10 @@ qgraph::qgraph(fit_mgm$pairwise$wadj,
                color = c(rep("lightblue",30),"yellow"),
                legend.mode="style1", legend.cex=.15,
                vsize = 3, esize = 15)
+```
 
+```{r}
+#pred MGM
 pred_obj <- predict(fit_mgm, cb_balanced)
 
 round(pred_obj[["probabilties"]][[31]],2)
@@ -153,19 +236,21 @@ Predicted_vs_real$PRED <- as.factor(Predicted_vs_real$PRED)
 conf<-data.frame(lapply(cb_balanced[31], as.factor),Predicted_vs_real)
 
 
+Confusion_matrix_BANKRUPTCY<-confusionMatrix(conf$Bankrupt.,conf$PRED)
+```
+
+```{r}
+#CM MGM + FF plot
 Confusion_matrix_mgm<-confusionMatrix(conf$Bankrupt.,conf$PRED)
-Confusion_matrix_mgm
 
 fourfoldplot(Confusion_matrix_mgm$table,color = c("red","turquoise"),conf.level = 0)
+```
 
+```{r}
+#roc
 pred_numeric<-prediction(as.numeric(conf$PRED),as.numeric(conf$Bankrupt.))
 
 roc_mgm.perf <- performance(pred_numeric,measure = "tpr", x.measure = "fpr")
-
-phi_Bankruptcy_mgm<-performance(pred_numeric, "phi")
-
-phi_Bankruptcy_mgm@y.values[[1]][2]
-
 
 df_mgm <- data.frame (roc_mgm.perf@x.values,roc_mgm.perf@y.values)
 
@@ -173,37 +258,53 @@ colnames(df_mgm)<-c("FPR", "TPR")
 
 ggplot(df_mgm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+
   theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+```
 
+```{r}
+#phi
+phi_Bankruptcy_mgm<-performance(pred_numeric, "phi")
 
-#LOGIT
+phi_Bankruptcy_mgm@y.values[[1]][2]
+```
 
+```{r}
 set.seed(123)
 split_train_test <- createDataPartition(cb_balanced$Bankrupt.,p=0.7,list=FALSE)
 cb_train<- cb_balanced[split_train_test,]
 cb_test <- cb_balanced[-split_train_test,]
+```
+
+```{r}
+#LOGIT
+
+#fit
 
 logit = glm(formula = Bankrupt.~., data = cb_balanced, family = binomial)
 summary(logit)
+```
+
+```{r}
+#predict
 
 logistic.prob<-data.frame(predict(logit,cb_test,type = "response"))
 colnames(logistic.prob)<-c("Pred")
 logistic.prob<- data.frame(ifelse(logistic.prob > 0.5, 1, 0))
 logistic.prob["True"]<-as.factor(cb_test$Bankrupt.)
 logistic.prob$Pred <- as.factor(logistic.prob$Pred)
+```
 
-
+```{r}
+#FF plot
 fourfoldplot(table(logistic.prob), color = c("red","turquoise"),conf.level = 0,margin = 1)
+```
 
+```{r}
+#roc
 caret::confusionMatrix(table(logistic.prob))
 
 pred_log<-prediction(as.numeric(logistic.prob$Pred),as.numeric(logistic.prob$True))
 
 pred_log.perf <- performance(pred_log, measure = "tpr", x.measure = "fpr")
-
-phi_log<-performance(pred_log, "phi")
-
-phi_Bankruptcy_log<-performance(pred_numeric, "phi")
-phi_Bankruptcy_log@y.values[[1]][2]
 
 df_log <- data.frame(pred_log.perf@x.values,pred_log.perf@y.values)
 
@@ -211,14 +312,30 @@ colnames(df_log)<-c("FPR", "TPR")
 
 ggplot(df_log,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+
   theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+```
 
+```{r}
+#phi
 
-#RANDOM FOREST
+phi_log<-performance(pred_log, "phi")
 
+phi_Bankruptcy_log<-performance(pred_numeric, "phi")
+phi_Bankruptcy_log@y.values[[1]][2]
+```
+
+```{r}
+#Random Forest
+
+#fit
 
 RF_perf_out<-tuneRF(cb_train[,-31],cb_train[,31], ntree=1000)
 RF_perf_out<-data.frame(RF_perf_out)
-rfor.cb <-randomForest(Bankrupt.~., data=cb_train, localImp = TRUE, importance=TRUE,proximity=TRUE, mtry=20)
+rfor.cb <-randomForest(Bankrupt.~., data=cb_train, localImp = TRUE, importance=TRUE,proximity=TRUE, ntry=4)
+
+```
+
+```{r}
+#Variable importance
 rfor.predict<- data.frame(predict(rfor.cb, cb_test, type = "response"))
 rfor.predict$predict.rfor.cb..cb_test..type....response.. <- ifelse(rfor.predict$predict.rfor.cb..cb_test..type....response.. > 0.5, 1,0)
 
@@ -234,7 +351,10 @@ ggplot(var_imp_rforest, aes(y=reorder(Variable,Overall),x=Overall,color="red")) 
   xlab("Overall importance") +
   ylab("Variable Name") + guides(color = FALSE, size = FALSE) + theme_bw()
 
+```
 
+```{r}
+#fourfoldplot
 rfor.predict["Test"]<-as.factor(cb_test$Bankrupt.)
 
 colnames(rfor.predict)<-c("Predict","Test")
@@ -242,17 +362,17 @@ colnames(rfor.predict)<-c("Predict","Test")
 rfor.predict$Predict <- as.factor(rfor.predict$Predict)
 
 rfor_cm <- confusionMatrix(rfor.predict$Predict, rfor.predict$Test)
-rfor_cm
 
 fourfoldplot(table(rfor.predict), color = c("red","turquoise"),conf.level = 0)
+
+```
+
+```{r}
+#ROC
 
 pred_for<-prediction(as.numeric(rfor.predict$Predict),as.numeric(rfor.predict$Test))
 
 roc_for.perf <- performance(pred_for, measure = "tpr", x.measure = "fpr")
-
-phi_Bankruptcy_for<-performance(pred_for, "phi")
-phi_Bankruptcy_for@y.values[[1]][2]
-
 
 df_for <- data.frame (roc_for.perf@x.values,roc_for.perf@y.values)
 
@@ -260,15 +380,19 @@ colnames(df_for)<-c("FPR", "TPR")
 
 ggplot(df_for,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
 
+```
 
+```{r}
+#phi
+
+phi_Bankruptcy_for<-performance(pred_for, "phi")
+phi_Bankruptcy_for@y.values[[1]]
+```
+
+```{r}
 #BOOSTING
 
-#Setting the random seed for replication
-set.seed(123)
-
-#setting up cross-validation
-cvcontrol <- trainControl(method="repeatedcv", number = 10,
-                          allowParallel=TRUE)
+#fit
 
 train.gbm <- train(as.factor(Bankrupt.) ~ ., 
                    data=cb_train,
@@ -276,18 +400,30 @@ train.gbm <- train(as.factor(Bankrupt.) ~ .,
                    verbose=F,
                    trControl=cvcontrol)
 
-par(mar = c(6, 10, 4.5, 4.5))
-summary(train.gbm, cBars = 20,las = 1)
-
 
 gbm.classTrain <-  predict(train.gbm, 
                            type="raw")
 head(gbm.classTrain)
+```
 
+```{r}
+#GBM plot
+
+par(mar = c(6, 10, 4.5, 4.5))
+summary(train.gbm, cBars = 20,las = 1)
+```
+
+```{r}
+#pred
 
 gbm.classTest <-  predict(train.gbm, 
                           newdata = cb_test,
                           type="raw")
+head(gbm.classTest)
+```
+
+```{r}
+#FF plot + Conf Matrix
 
 gbm.classTest <- data.frame(gbm.classTest)
 gbm.classTest["Test"]<-as.factor(cb_test$Bankrupt.)
@@ -296,45 +432,55 @@ colnames(gbm.classTest)<-c("Predict","Test")
 gbm.classTest$Predict <- as.factor(gbm.classTest$Predict)
 
 gbm_cm <- confusionMatrix(gbm.classTest$Predict, gbm.classTest$Test)
-gbm_cm
 
 fourfoldplot(table(gbm.classTest), color = c("red","turquoise"),conf.level = 0)
 
+```
+
+```{r}
+#ROC
 pred_gbm<-prediction(as.numeric(gbm.classTest$Predict),as.numeric(gbm.classTest$Test))
 
 roc_gbm.perf <- performance(pred_gbm, measure = "tpr", x.measure = "fpr")
-
-phi_Bankruptcy_GBM<-performance(pred_gbm, "phi")
-phi_Bankruptcy_GBM@y.values[[1]][2]
-
 
 df_gbm <- data.frame (roc_gbm.perf@x.values,roc_gbm.perf@y.values)
 
 colnames(df_gbm)<-c("FPR", "TPR")
 
-ggplot(df_gbm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+
-  theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+ggplot(df_gbm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+```
 
-###CAUSALITY
+```{r}
+#phi
 
+phi_Bankruptcy_GBM<-performance(pred_gbm, "phi")
+phi_Bankruptcy_GBM@y.values[[1]]
+```
+
+```{r}
 #PCalg
 
+#DAG
 suff.stat <- list(C=C.cb,n=nrow(cb_balanced))
 pc.fit <- pc(suff.stat, gaussCItest,p=ncol(cb_balanced),alpha=0.02)
-
-par(mfrow = c(1,1))
 plot(pc.fit)
 
+pdag.cb<- udag2pdagRelaxed(skeleton, verbose = 0)
+plot(pdag.cb)
+```
 
+```{r}
+#IDA
+covTrue <- trueCov(pdag.cb)
 
-ida(1,31, C.cb, pc.fit@graph)
-ida(3,31, C.cb, pc.fit@graph)
-ida(9,31, C.cb, pc.fit@graph)
-ida(10,31,C.cb, pc.fit@graph)
-ida(11,31,C.cb, pc.fit@graph)
-ida(15,31,C.cb, pc.fit@graph)
-ida(16,31,C.cb, pc.fit@graph)
-ida(21,31,C.cb, pc.fit@graph)
-ida(27,31,C.cb, pc.fit@graph)
+ida(1,31, C.cb, pdag.cb@graph, method = "local")
+ida(3,31, C.cb, pdag.cb@graph, method = "local")
+ida(9,31, C.cb, pdag.cb@graph, method = "local")
+ida(10,31,C.cb, pdag.cb@graph, method = "local")
+ida(11,31,C.cb, pdag.cb@graph, method = "local")
+ida(15,31,C.cb, pdag.cb@graph, method = "local")
+ida(16,31,C.cb, pdag.cb@graph, method = "local")
+ida(21,31,C.cb, pdag.cb@graph, method = "local")
+ida(27,31,C.cb, pdag.cb@graph, method = "local")
 
-
+```
