@@ -1,0 +1,915 @@
+---
+title: "Probabilistic modeling for causal inference applied to company bankruptcy"
+author: "Lorenzo Rossi"
+date: "26/04/2022"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+abstract: The paper aims to study the causes of company bankruptcies implementing
+  probabilistic modeling algorhitms such as mixed graphical models in order to study
+  causality and to make inference on the factors that lead to bankruptcy. The conclusion
+  is that Probabilistic modeling techniques are as performant as other Supervised
+  Learning algorhitm, generally leading to the same results.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Introduction
+
+understanding cause-effect relationships between variables and being able to identify the most important factors in estimating bankruptcies can yield valuable information. Usually, experimental intervention is used to find these relationships, as what decides the default of a company can differ across economic systems, environments and human actions. As such, this knowledge can be put to further use upon implementing different models for the actual prediction of bankruptcies.
+This paper will focus on analyzing the impact of economic and financial factors at the firm level on bankruptcy risk. Since it is very unlikely that only one factor may determine the default of a company, the choice of a framework in which it is possible to assess the interactions among variable is preferred. For this purpose probabilistic modeling algorithms represent a valid choice of framework. Such models models are used for representing complex domains, conditional independencies and joint multivariate probability distributions through graphs. 
+The paper is structured as such: in the first part there will be a brief literature overview about company bankruptcies and theoretical background for probabilistic models.
+The second part is dedicated to the choice of probabilistic models and the results obtained through inference on the chosen data set.
+Finally, the results of this approach will be confront it with other supervised learning algorithm in order to evaluate the performances of both approaches.
+
+## Dataset
+
+The dataset comes from the notorious Kaggle dataset [Company Bankruptcy Prediction: Bankruptcy data from the Taiwan Economic Journal for the years 1999–2009](https://www.kaggle.com/datasets/fedesoriano/company-bankruptcy-prediction). As stated by the authors, data were collected from the Taiwan Economic Journal for the years 1999 to 2009. Company bankruptcy was defined based on the business regulations of the Taiwan Stock Exchange.
+However, the features selected were 30 out of the original 95. This was done by hand and taking account of the economic literature, leading to the selection of a subset of variables. In detai:
+
+Y - Bankrupt?: Class label
+X1 - ROA(C) before interest and depreciation before interest: Return On Total Assets(C)
+X2 - ROA(A) before interest and % after tax: Return On Total Assets(A)
+X3 - ROA(B) before interest and depreciation after tax: Return On Total Assets(B)
+X4 - Operating Gross Margin: Gross Profit/Net Sales
+X5 - Realized Sales Gross Margin: Realized Gross Profit/Net Sales
+X13 - Cash flow rate: Cash Flow from Operating/Current Liabilities
+X15 - Tax rate (A): Effective Tax Rate
+X16 - Net Value Per Share (B): Book Value Per Share(B)
+X17 - Net Value Per Share (A): Book Value Per Share(A)
+X18 - Net Value Per Share (C): Book Value Per Share(C)
+X19 - Persistent EPS in the Last Four Seasons: EPS-Net Income
+X20 - Cash Flow Per Share
+X22 - Operating Profit Per Share (Yuan ¥): Operating Income Per Share
+X23 - Per Share Net profit before tax (Yuan ¥): Pretax Income Per Share
+X37 - Debt ratio %: Liability/Total Assets
+X38 - Net worth/Assets: Equity/Total Assets
+X42 - Operating profit/Paid-in capital: Operating Income/Capital
+X43 - Net profit before tax/Paid-in capital: Pretax Income/Capital
+X52 - Operating profit per person: Operation Income Per Employee
+X54 - Working Capital to Total Assets
+X57 - Cash/Total Assets
+X59 - Cash/Current Liability
+X60 - Current Liability to Assets
+X61 - Operating Funds to Liability
+X68 - Retained Earnings to Total Assets
+X70 - Total expense/Assets
+X82 - CFO to Assets
+X84 - Current Liability to Current Assets
+X86 - Net Income to Total Assets
+X89 - Gross Profit to Sales
+X95 - Equity to Liability
+
+# Literature Overview for company bankruptcies
+
+There's a rich literature in microeconomics research about firm defaults. The aim is to develop the models based on a combination of these features, and confront them with the results obtained by the algorithms.
+The concept of “failure” can vary from the narrow definition of bankruptcy or permanent insolvency to simply non-achievement of goals (Cochran, 1981; Pretorius, 2009).
+Altman constructed a model to predict bankruptcy with a multiple discriminant analysis finding that profitability, liquidity and solvency were the most significant factors in predicting bankruptcy (Altman, 1968). Ohlson explains four different factors he found statistically significant in affecting the probability of failure: the size of the company, the state of financial structures, performance and liquidity (Ohlson, 1980). Various empirical studies (Baldwin et al., 1997) tend to support the theoretical assumption that firm failure is rarely caused by only one cause or source.
+The most common factor in literature and evidence is that more than one causes or variables are taken into consideration when investigating bankruptcy.
+
+# Theoretical Framework
+
+The main goal of probabilistic models is to capture conditional independence relationships between interacting random variables. Moreover, by being aware of the graph structure of a PGM, one can solve tasks such as inference.
+
+The starting point is to consider
+
+$$p(x_1, x_2, ..., x_n)$$
+
+as a probability distribution that can be decomposed in
+
+$$p(x_{1j}) = p(x_1)p(x_2|x_1)p(x_3|x_2, x_1)...p(x_j|x_{1j-1})$$
+
+through the chain rule, which expresses the probability of interceptions
+through conditional probabilities, much similar to the Bayes rule:
+
+$$P(α|β) = \frac{P(β|α)P(α)}{P(β)}$$
+
+Two events $α$ and $β$ are independent given a third event $γ (α ⊥⊥ β|γ)$ if
+$P(α|β ∩ γ) = P(α|γ)$ and vice-versa $P(β|α ∩ γ) = P(β|γ)$c Which means that knowing $γ$ makes $β$ irrelevant for predicting $α$ (the same is valid for $α$ and $β$ inverted)
+
+Following these statements and the necessary mathematical iterations, the Conditional Density Function is met:
+
+$$f_{1|2}(x_1|x_2) = \frac{f_{12}(x_1, x_2)}{f_2(x2)}$$
+## Mixed Interactions Models
+
+The dataset in this work is a case where there are both discrete and continuous variables with 1 discrete
+variable and 30 continuous variables. In the literature they are called Mixed Interaction Models, which are models for qualitative and quantitative variables that combine log-linear models for discrete variables with graphical Gaussian models
+for continuous variables. Moreover, a MIM is called "Homogeneous" if the covariance matrix of the Gaussian variables does not depend on the values of the discrete variables.
+In the case for a MIM, the following density has to be considered:
+
+$$f(i, y) = p(i)(2π)^{−q/2} det(Σ)^{−1/2}exp[-\frac{1}{2}(y − µ(i))^T Σ−1(y − µ(i))$$
+which belongs to the exponential family:
+$$f(i, y) = exp[g(i) + h(i)^T y −\frac{1}{2}y^T Ky]$$
+where $K$ is the concentration matrix (a simmetric positive $q × q$ matrix), $g(i)$, $h(i)$ are the log-linear expansion of the probability $p(i)$ (Canonical parameters).For a fixed $i$, $g(i)$ is a value and $h(i)$ is a $q$ vector. Note that it is possible to impose conditional independence among variables by setting their interactions to zero.
+
+
+The dimension of a MI-model is the number of canonical parameters composing $g(i)$ and $h(i)$ adding to the number of free
+elements of the covariance matrix less 1. Under $M$, $D$ is asymptotically $χ^2$ (k) where k is the difference in dimension between the saturated model and M. The minimal sufficient statistics for a generator (a, b), where $a ⊆ ∆$and $b ⊆ Γ $are: marginal frequency, total of variables, sub-matrix of the sum of squares matrix. 
+ 
+
+## Probabilistic Modeling and results
+
+First of all, given the enormous disproportion between the number of bankruptcies and non-bankruptcies, the number
+of the former was increased through the procedure of oversampling performed with the ROSE package of R, building a database with the same numbero of observation for the target variable (Bankrupt), with a proportion of 1:1. Furthermore, the continuous variables were standardized. 
+
+```{r include=FALSE}
+library(readxl)
+library(PerformanceAnalytics)
+library(corrplot)
+library(ggcorrplot)
+library(mgm)
+library(gRim)
+library(bnlearn)
+library(gRapHD)
+library(qgraph)
+library(Rgraphviz)
+library(igraph)
+library(gRbase)
+library(RBGL)
+library(caret)
+library(pROC)
+library(ROCR)
+library(ggplot2)
+library(FactoMineR)
+library(factoextra)
+library(ggplot2)
+library(ggpubr)
+library(gRapHD)
+library(glasso)
+library(SIN)
+library(gRain)
+library(randomForest)
+library(randomForestExplainer)
+library(e1071)
+library(MASS)
+library(infotheo)
+library(varrank)
+library(glmnet)
+library(leaps)
+library(caret)
+library(car)
+library(combinat)
+library(rpart)
+library(ROSE)
+library(pcalg)
+library(bnlearn)
+library(ggm)
+library(minet)
+library(rpart)
+library(rpart.plot) 
+library(RColorBrewer)      
+library(party)                  
+library(partykit)               
+
+cb <- read.csv('BankruptcyFinal.csv')
+```
+
+```{r include=FALSE}
+options(tinytex.verbose = TRUE)
+```
+
+
+```{r echo=FALSE}
+barplot(table(cb$Bankrupt.),col=rainbow(2),
+        main="Frequency of Bankruptcy",
+        xlab="Recession Tag",
+        ylab="Number of Recession Events")
+
+cb_balanced <- ROSE(Bankrupt. ~ ., data=cb, seed = 123)$data
+
+```
+
+The analysis with the graphical models was started by inspecting the relations between continuous variables in the dataset. For this purpose, the GLASSO model was implemented through the relative *glasso* package. It gives a fast technique to find the Gaussian graphical model that maximizes a log-likelihood for $K$ which is penalized by the $L1 − norm |K|$. 
+Note that in this first part of the analysis, the target variable was not consiedered
+
+After different tests, the model that best matches the interaction of the variables with respect to economic theory without an extreme penalization is the model with the value of ρ (the one that penalizes further connections) equal to 0.4
+
+The model presents a graph with four clusters of variables: the main cluster collects all those variables that interact with net revenues and expenses; a second cluster is related only to gross revenues; another one is made by the variables related to asset values of the company; the final cluster presents the cash-flow variables.
+This graph is useful for understanding the main groups of variables and how the interactions within them.
+
+
+```{r include=FALSE}
+#rho
+S.cb <- cov.wt(cb_balanced[,-31], method="ML")$cov
+C.cb  <- cov2cor(S.cb)
+```
+
+
+```{r echo=FALSE}
+#rho = 0.3
+res.lasso3 <- glasso(C.cb , rho=0.3)
+AM3 <- res.lasso3$wi!=0
+diag(AM3)<-FALSE
+g.lasso3 <- as(AM3,"graphNEL")
+nodes(g.lasso3)<-names(cb_balanced[,-31])
+glasso.cp3 <- cmod(edgeList(g.lasso3),data=cb_balanced[,-31])
+plot(as(glasso.cp3 ,"igraph"),vertex.color="orange",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp3,'igraph')), vertex.label.family='Helvetica')
+```
+
+```{r echo=FALSE}
+#rho = 0.4
+res.lasso4 <- glasso(C.cb , rho=0.4)
+AM4 <- res.lasso4$wi!=0
+diag(AM4)<-FALSE
+g.lasso4 <- as(AM4,"graphNEL")
+nodes(g.lasso4)<-names(cb_balanced[,-31])
+glasso.cp4 <- cmod(edgeList(g.lasso4),data=cb_balanced[,-31])
+plot(as(glasso.cp4 ,"igraph"),vertex.color="orange",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp4,'igraph')), vertex.label.family='Helvetica')
+```
+
+```{r echo=FALSE}
+#rho 0.5
+res.lasso5 <- glasso(C.cb , rho=0.5)
+AM5 <- res.lasso5$wi!=0
+diag(AM5)<-FALSE
+g.lasso5 <- as(AM5,"graphNEL")
+nodes(g.lasso5)<-names(cb_balanced[,-31])
+glasso.cp5 <- cmod(edgeList(g.lasso5),data=cb_balanced[,-31])
+plot(as(glasso.cp5 ,"igraph"),vertex.color="orange",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp5,'igraph')), vertex.label.family='Helvetica')
+```
+The target variable will now be included again in the analysis.
+
+The next two algorithm for graphical representation of the interactions among variables are the minForest() algorithm from *gRapHD* and stepw() from *gRim* packages respectively. The first implements the minForest model which returns the tree or forest that minimizes the $-2log-likelihood$, AIC, or BIC. From the direct connections of the target variable in the plot, it is possible to observe the link between Tax Rate, Persistent Earning per Share (EPS) and the Net Value of the assets of the company.
+The stepw() algorithm perform stepwise selection, and it shows many more variables to the target. A part from the previous variables, now it the target variable presents connections with Debt, Return On Total Assets and Net Profits.
+
+All of these interactions find proof in the economic theory and in the aforementioned literature. 
+
+
+
+```{r echo=FALSE}
+#minforest
+
+bf<-minForest(cb_balanced)
+mbG<-stepw(model=bf,data=cb_balanced)
+
+plot(bf,cex.vert.label=0.6,numIter=6000,col.labels=c("dark red"), edge.size = 0.5, vert.hl=c(31),col.hl=c("blue"),energy=TRUE)
+
+plot(mbG,cex.vert.label=0.6,numIter=6000,col.labels=c("dark red"),vert.hl=c(31),col.hl=c("blue"),energy=TRUE)
+```
+
+Finally, the mgm() algorithm from the its own package was implemented, using nodewise regression. The k parameter was set equal to three, and a cross-validation (CV) with ten folds was considered. The result maintains the same connections as the previous plot but it highlights four specific variables: Debt Ratio, Net Worth assets, Working Capital and Cash On Total Assets. Also in this case, the connected variables can fall into the categories of factors that the literature has shown to be relevant in predicting company bankruptcy, as they are all linked to solvency, profitability and liquidity.    
+
+```{r}
+#MGM 
+
+#fit + plot
+fit_mgm <- mgm(data = cb_balanced,type = c(rep("g",30), "c"), levels = c(rep(1,30),2),k=3,lambdaSel = "CV",
+               lambdaFolds=10,ruleReg="AND",overparameterize = T)
+
+qgraph::qgraph(fit_mgm$pairwise$wadj,
+               layout = "spring", repulsion = 1.3,
+               edge.color = fit_mgm$pairwise$edgecolor,
+               nodeNames = colnames(cb_balanced),
+               color = c(rep("orange",30),"turquoise"),
+               legend.mode="style1", legend.cex=.25,
+               vsize = 3, esize = 15)
+```
+
+```{r include=FALSE}
+#pred MGM
+pred_obj <- predict(fit_mgm, cb_balanced)
+
+round(pred_obj[["probabilties"]][[31]],2)
+
+Predicted_vs_real<-as.data.frame(pred_obj[["predicted"]][,31])
+
+colnames(Predicted_vs_real)<-c("PRED")
+
+levels(Predicted_vs_real$PRED) <- c("TRUE", "FALSE")
+
+Predicted_vs_real$PRED <- as.factor(Predicted_vs_real$PRED)
+
+conf<-data.frame(lapply(cb_balanced[31], as.factor),Predicted_vs_real)
+
+
+```
+
+The previous model brought solid results. The next step is to evaluate numerically the performance of the previous algorithm in terms of confusion matrix and ROC curve. In the next plots it is possible to check the number of the false positives and negatives estimated by the algorithm in the confusion matrix as well as an accuracy score. 
+The MGM obtained an accuracy score of the 84%.
+
+```{r echo=FALSE}
+#CM MGM + FF plot
+Confusion_matrix_mgm<-confusionMatrix(conf$Bankrupt.,conf$PRED)
+
+Confusion_matrix_mgm
+
+fourfoldplot(Confusion_matrix_mgm$table,color = c("red","turquoise"),conf.level = 0)
+```
+
+```{r echo=FALSE}
+#roc
+pred_numeric<-prediction(as.numeric(conf$PRED),as.numeric(conf$Bankrupt.))
+
+roc_mgm.perf <- performance(pred_numeric,measure = "tpr", x.measure = "fpr")
+
+df_mgm <- data.frame (roc_mgm.perf@x.values,roc_mgm.perf@y.values)
+
+colnames(df_mgm)<-c("FPR", "TPR")
+
+
+ggplot(df_mgm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+
+  theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+```
+
+```{r include=FALSE}
+set.seed(123)
+split_train_test <- createDataPartition(cb_balanced$Bankrupt.,p=0.7,list=FALSE)
+cb_train<- cb_balanced[split_train_test,]
+cb_test <- cb_balanced[-split_train_test,]
+```
+
+## Comparing other ML algorithms
+
+The MGM algorithm obtained a moderately high accuracy and created fair graphical representation of the interactions among variables.
+The next part of the analysis will be to confront its result with other "classic" Machine Learning algorithms.
+For this comparison were chosen the following models:
+
+- Logistic Regression
+
+- Random Forest Classifier
+
+- Boosting
+
+## Logistic Regression
+
+The regression output reveals the high significance of certain variable to be the ones highlighted by the graphical model connections. As expected by economic literature, many of them affect either positively or negatively the probability of a bankruptcy (i.e. higher debt risks to lead to bankruptcy, while higher net worth assets lowers that possibility etc.).
+
+```{r echo=FALSE}
+#LOGIT
+
+#fit
+
+logit = glm(formula = Bankrupt.~., data = cb_balanced, family = binomial)
+summary(logit)
+```
+
+```{r include=FALSE}
+#predict
+
+logistic.prob<-data.frame(predict(logit,cb_test,type = "response"))
+colnames(logistic.prob)<-c("Pred")
+logistic.prob<- data.frame(ifelse(logistic.prob > 0.5, 1, 0))
+logistic.prob["True"]<-as.factor(cb_test$Bankrupt.)
+logistic.prob$Pred <- as.factor(logistic.prob$Pred)
+```
+
+The following plots show the accuracy of the Logistic model and its predictions.
+The model obtain a slightly lower accuracy than the MGM.
+
+```{r echo=FALSE}
+#FF plot
+fourfoldplot(table(logistic.prob), color = c("red","turquoise"),conf.level = 0,margin = 1)
+```
+
+```{r echo=FALSE}
+#roc
+caret::confusionMatrix(table(logistic.prob))
+
+pred_log<-prediction(as.numeric(logistic.prob$Pred),as.numeric(logistic.prob$True))
+
+pred_log.perf <- performance(pred_log, measure = "tpr", x.measure = "fpr")
+
+df_log <- data.frame(pred_log.perf@x.values,pred_log.perf@y.values)
+
+colnames(df_log)<-c("FPR", "TPR")
+
+ggplot(df_log,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+
+  theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+```
+
+## Random Forest 
+
+The RF model was trained using 1000 trees. The plot shows the relevance of the features in determining the classification task.
+It is clear that the first two variables outclass the other for importance in explaining the classification output. The two are followed by Debt Ratio and Return On Total Assets. However, most of the relevant variables are not changed if compared to the previous algorithms. On the contrary, certain ones maintain constant their high influence on the target variable (i.e. Net Worth Assets and Debt Ratio).  
+
+```{r include=FALSE}
+#Random Forest
+
+#fit
+
+RF_perf_out<-tuneRF(cb_train[,-31],cb_train[,31], ntree=1000)
+RF_perf_out<-data.frame(RF_perf_out)
+rfor.cb <-randomForest(Bankrupt.~., data=cb_train, localImp = TRUE, importance=TRUE,proximity=TRUE, mtry=20)
+
+```
+
+```{r echo=FALSE}
+#Variable importance
+rfor.predict<- data.frame(predict(rfor.cb, cb_test, type = "response"))
+rfor.predict$predict.rfor.cb..cb_test..type....response.. <- ifelse(rfor.predict$predict.rfor.cb..cb_test..type....response.. > 0.5, 1,0)
+
+var_imp_rforest<-data.frame(rfor.cb$importance)
+colnames(var_imp_rforest)<-c("Variable","Overall")
+var_imp_rforest[,1]<-rownames(var_imp_rforest)
+rownames(var_imp_rforest)<-seq(1:30)
+
+ggplot(var_imp_rforest, aes(y=reorder(Variable,Overall),x=Overall,color="red")) + 
+  geom_point() +
+  geom_segment(aes(x=0,xend=Overall,yend=Variable)) +
+  scale_color_discrete(name="Variable Group") +
+  xlab("Overall importance") +
+  ylab("Variable Name") + guides(color = FALSE, size = FALSE) + theme_bw()
+
+```
+
+The confusion matrix for the RF shows that the model obtains an higher accuracy (almost 90%) than the MGM with less wrong prediction. 
+
+```{r echo=FALSE}
+#fourfoldplot
+rfor.predict["Test"]<-as.factor(cb_test$Bankrupt.)
+
+colnames(rfor.predict)<-c("Predict","Test")
+
+rfor.predict$Predict <- as.factor(rfor.predict$Predict)
+
+rfor_cm <- confusionMatrix(rfor.predict$Predict, rfor.predict$Test)
+
+rfor_cm
+
+fourfoldplot(table(rfor.predict), color = c("red","turquoise"),conf.level = 0)
+
+```
+
+```{r echo=FALSE}
+#ROC
+
+pred_for<-prediction(as.numeric(rfor.predict$Predict),as.numeric(rfor.predict$Test))
+
+roc_for.perf <- performance(pred_for, measure = "tpr", x.measure = "fpr")
+
+df_for <- data.frame (roc_for.perf@x.values,roc_for.perf@y.values)
+
+colnames(df_for)<-c("FPR", "TPR")
+
+ggplot(df_for,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+
+```
+
+#Boosting
+
+Boosting is another approach to improve the predictions resulting from a decision tree. 
+Like bagging and random forests, it is a general approach that can be applied to many statistical learning methods for regression or classification.
+Boosting builds lots of smaller trees. Unlike random forests, each new tree in boosting tries to patch up the deficiencies of the current ensemble. It's a sequential process in which each next model which is generated is added so as to improve a bit from the previous model.
+
+The output is similar to the RF: the first three variables remain the most important in making prediction for for the target variable, while the other variables in the output show slightly different levels of importance.  
+
+
+```{r include=FALSE}
+#BOOSTING
+
+#fit
+
+#Setting the random seed for replication
+set.seed(123)
+
+#setting up cross-validation
+cvcontrol <- trainControl(method="repeatedcv", number = 10,
+                          allowParallel=TRUE)
+
+train.gbm <- train(as.factor(Bankrupt.) ~ ., 
+                   data=cb_train,
+                   method="gbm",
+                   verbose=F,
+                   trControl=cvcontrol)
+
+
+gbm.classTrain <-  predict(train.gbm, 
+                           type="raw")
+head(gbm.classTrain)
+```
+
+```{r echo=FALSE}
+#GBM plot
+
+par(mar = c(6, 10, 4.5, 4.5))
+summary(train.gbm, cBars = 10,las = 1)
+```
+
+```{r include=FALSE}
+#pred
+
+gbm.classTest <-  predict(train.gbm, 
+                          newdata = cb_test,
+                          type="raw")
+head(gbm.classTest)
+```
+
+The accuracy of the Boosting is higher than MGM, but still lower than the RF. 
+
+```{r echo=FALSE}
+#FF plot + Conf Matrix
+
+gbm.classTest <- data.frame(gbm.classTest)
+gbm.classTest["Test"]<-as.factor(cb_test$Bankrupt.)
+colnames(gbm.classTest)<-c("Predict","Test")
+
+gbm.classTest$Predict <- as.factor(gbm.classTest$Predict)
+
+gbm_cm <- confusionMatrix(gbm.classTest$Predict, gbm.classTest$Test)
+
+gbm_cm
+
+fourfoldplot(table(gbm.classTest), color = c("red","turquoise"),conf.level = 0)
+
+```
+
+```{r}
+#ROC
+pred_gbm<-prediction(as.numeric(gbm.classTest$Predict),as.numeric(gbm.classTest$Test))
+
+roc_gbm.perf <- performance(pred_gbm, measure = "tpr", x.measure = "fpr")
+
+df_gbm <- data.frame (roc_gbm.perf@x.values,roc_gbm.perf@y.values)
+
+colnames(df_gbm)<-c("FPR", "TPR")
+
+ggplot(df_gbm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+```
+
+
+
+# Conclusions
+
+This paper focused on analyzing the impact of economic and financial factors that determine company bankruptcies through a probabilistic modeling framework.
+The results show that net revenue, asset values, level of debt, and productivity are the main factors that mostly determine the occurrence of this event. 
+Algorithms that allow for graphical representation were implemented in order to find and visualize the connections and the independencies of the target variable (Bankruptcy). The MGM model was used to make inference, discover the most relevant explanatory variables and make prediction, obtaining a moderately high accuracy. The results were confronted with the accuracy of other Machine Learning algorithms, reaching the conclusion that the MGM performed as well as other models. If the MGM gave a clear visual representation of the interactions and the links between Bankrutpcy and other variables, the other models tried to show which variables had the most influence on the target.
+This represents two different approaches with which making inference.
+
+# Bibliography
+
+https://www.kaggle.com/datasets/fedesoriano/company-bankruptcy-prediction
+
+Altman, E. (1968). Financial Ratios, Discriminant Analysis and the Prediction of Corporate 
+Bankruptcy. The Journal of Finance, 23(4), p.589.
+
+Altman, E. I., & Hotchkiss, E. (2010). Corporate financial distress 
+and bankruptcy: Predict and avoid bankruptcy, analyze and invest in distressed debt (Vol. 289). Hoboken, NJ: John Wiley 
+& Sons.
+
+Avenhuis, J (2013) Testing the generalizability of the bankruptcy prediction models of 
+Altman, Ohlson and Zmijewski for Dutch listed companies. Netherlands: University of 
+Twente
+
+Cochran, A. B. (1981). Small business mortality rates: a review of the literature. Journal of Small Business
+Management, 19(4), 50–59. 
+
+Pretorius, M. (2009). Defining business decline, failure and turnaround: a content analysis. Southern African
+Journal of Entrepreneurship and Small Business Management, 2(1), 1–16. 
+
+Ohlson, J. (1980). Financial Ratios and the Probabilistic Prediction of Bankruptcy. Journal 
+of Accounting Research, 18(1), p.109
+
+
+
+```{r eval=FALSE, include=FALSE, ref.label=knitr::all_labels()}
+library(readxl)
+library(PerformanceAnalytics)
+library(corrplot)
+library(ggcorrplot)
+library(mgm)
+library(gRim)
+library(bnlearn)
+library(gRapHD)
+library(qgraph)
+library(Rgraphviz)
+library(igraph)
+library(gRbase)
+library(RBGL)
+library(caret)
+library(pROC)
+library(ROCR)
+library(ggplot2)
+library(FactoMineR)
+library(factoextra)
+library(ggplot2)
+library(ggpubr)
+library(gRapHD)
+library(glasso)
+library(SIN)
+library(gRain)
+library(randomForest)
+library(randomForestExplainer)
+library(e1071)
+library(MASS)
+library(infotheo)
+library(varrank)
+library(glmnet)
+library(leaps)
+library(caret)
+library(car)
+library(combinat)
+library(rpart)
+library(ROSE)
+library(pcalg)
+library(bnlearn)
+library(ggm)
+library(minet)
+library(rpart)
+library(rpart.plot) 
+library(RColorBrewer)      
+library(party)                  
+library(partykit)  
+library(gbm)
+
+cb <- read.csv('BankruptcyFinal.csv')
+
+barplot(table(cb$Bankrupt.),col=rainbow(2),
+        main="Frequency of Bankruptcy",
+        xlab="Recession Tag",
+        ylab="Number of Recession Events")
+
+cb_balanced <- ROSE(Bankrupt. ~ ., data=cb, seed = 123)$data
+
+#GLASSO FOR VARS BEHAVIOUR
+
+#rho = 0.1
+S.cb <- cov.wt(cb_balanced, method="ML")$cov
+C.cb  <- cov2cor(S.cb)
+res.lasso1 <- glasso(C.cb , rho=0.1)
+AM1 <- res.lasso1$wi!=0
+diag(AM1)<-FALSE
+g.lasso1 <- as(AM1,"graphNEL")
+nodes(g.lasso1)<-names(cb_balanced)
+glasso.cp1 <- cmod(edgeList(g.lasso1),data=cb_balanced)
+plot(as(glasso.cp1 ,"igraph"),vertex.color="red",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp1,'igraph')), vertex.label.family='Helvetica')
+
+#rho 0.2
+res.lasso2 <- glasso(C.cb , rho=0.2)
+AM2 <- res.lasso2$wi!=0
+diag(AM2)<-FALSE
+g.lasso2 <- as(AM2,"graphNEL")
+nodes(g.lasso2)<-names(cb_balanced)
+glasso.cp2 <- cmod(edgeList(g.lasso2),data=cb_balanced)
+plot(as(glasso.cp2 ,"igraph"),vertex.color="red",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp2,'igraph')), vertex.label.family='Helvetica')
+
+#rho = 0.3
+res.lasso3 <- glasso(C.cb , rho=0.3)
+AM3 <- res.lasso3$wi!=0
+diag(AM3)<-FALSE
+g.lasso3 <- as(AM3,"graphNEL")
+nodes(g.lasso3)<-names(cb_balanced)
+glasso.cp3 <- cmod(edgeList(g.lasso3),data=cb_balanced)
+plot(as(glasso.cp3 ,"igraph"),vertex.color="red",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp3,'igraph')), vertex.label.family='Helvetica')
+
+#rho = 0.4
+res.lasso4 <- glasso(C.cb , rho=0.4)
+AM4 <- res.lasso4$wi!=0
+diag(AM4)<-FALSE
+g.lasso4 <- as(AM4,"graphNEL")
+nodes(g.lasso4)<-names(cb_balanced)
+glasso.cp4 <- cmod(edgeList(g.lasso4),data=cb_balanced)
+plot(as(glasso.cp ,"igraph"),vertex.color="red",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp4,'igraph')), vertex.label.family='Helvetica')
+
+#rho 0.5
+res.lasso5 <- glasso(C.cb , rho=0.5)
+AM5 <- res.lasso5$wi!=0
+diag(AM5)<-FALSE
+g.lasso5 <- as(AM5,"graphNEL")
+nodes(g.lasso5)<-names(cb_balanced)
+glasso.cp5 <- cmod(edgeList(g.lasso5),data=cb_balanced)
+plot(as(glasso.cp5 ,"igraph"),vertex.color="red",vertex.label.dist=0.5,alpha=TRUE,
+     vertex.label.cex=0.6,vertex.size=8, edge.color="black",edge.size=5,
+     layout=layout_with_fr(as(glasso.cp5,'igraph')), vertex.label.family='Helvetica')
+
+
+#minforest
+
+bf<-minForest(cb_balanced)
+mbG<-stepw(model=bf,data=cb_balanced)
+
+plot(bf,cex.vert.label=0.6,numIter=6000,col.labels=c("red"), edge.size = 0.5, vert.hl=c(31),col.hl=c("blue"),energy=TRUE)
+
+plot(mbG,cex.vert.label=0.6,numIter=6000,col.labels=c("red"),vert.hl=c(31),col.hl=c("blue"),energy=TRUE)
+
+#MGM + ROC curve
+
+fit_mgm <- mgm(data = cb_balanced,type = c(rep("g",30), "c"), levels = c(rep(1,30),2),k=3,lambdaSel = "CV",
+               lambdaFolds=10,ruleReg="AND",overparameterize = T)
+
+qgraph::qgraph(fit_mgm$pairwise$wadj,
+               layout = "spring", repulsion = 1.3,
+               edge.color = fit_mgm$pairwise$edgecolor,
+               nodeNames = colnames(cb_balanced),
+               color = c(rep("lightblue",30),"yellow"),
+               legend.mode="style1", legend.cex=.15,
+               vsize = 3, esize = 15)
+
+pred_obj <- predict(fit_mgm, cb_balanced)
+
+round(pred_obj[["probabilties"]][[31]],2)
+
+Predicted_vs_real<-as.data.frame(pred_obj[["predicted"]][,31])
+
+colnames(Predicted_vs_real)<-c("PRED")
+
+levels(Predicted_vs_real$PRED) <- c("TRUE", "FALSE")
+
+Predicted_vs_real$PRED <- as.factor(Predicted_vs_real$PRED)
+
+conf<-data.frame(lapply(cb_balanced[31], as.factor),Predicted_vs_real)
+
+
+Confusion_matrix_mgm<-confusionMatrix(conf$Bankrupt.,conf$PRED)
+Confusion_matrix_mgm
+
+fourfoldplot(Confusion_matrix_mgm$table,color = c("red","turquoise"),conf.level = 0)
+
+pred_numeric<-prediction(as.numeric(conf$PRED),as.numeric(conf$Bankrupt.))
+
+roc_mgm.perf <- performance(pred_numeric,measure = "tpr", x.measure = "fpr")
+
+phi_Bankruptcy_mgm<-performance(pred_numeric, "phi")
+
+phi_Bankruptcy_mgm@y.values[[1]][2]
+
+
+df_mgm <- data.frame (roc_mgm.perf@x.values,roc_mgm.perf@y.values)
+
+colnames(df_mgm)<-c("FPR", "TPR")
+
+ggplot(df_mgm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+
+  theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+
+
+#LOGIT
+
+set.seed(123)
+split_train_test <- createDataPartition(cb_balanced$Bankrupt.,p=0.7,list=FALSE)
+cb_train<- cb_balanced[split_train_test,]
+cb_test <- cb_balanced[-split_train_test,]
+
+logit = glm(formula = Bankrupt.~., data = cb_balanced, family = binomial)
+summary(logit)
+
+logistic.prob<-data.frame(predict(logit,cb_test,type = "response"))
+colnames(logistic.prob)<-c("Pred")
+logistic.prob<- data.frame(ifelse(logistic.prob > 0.5, 1, 0))
+logistic.prob["True"]<-as.factor(cb_test$Bankrupt.)
+logistic.prob$Pred <- as.factor(logistic.prob$Pred)
+
+
+fourfoldplot(table(logistic.prob), color = c("red","turquoise"),conf.level = 0,margin = 1)
+
+caret::confusionMatrix(table(logistic.prob))
+
+pred_log<-prediction(as.numeric(logistic.prob$Pred),as.numeric(logistic.prob$True))
+
+pred_log.perf <- performance(pred_log, measure = "tpr", x.measure = "fpr")
+
+phi_log<-performance(pred_log, "phi")
+
+phi_Bankruptcy_log<-performance(pred_numeric, "phi")
+phi_Bankruptcy_log@y.values[[1]][2]
+
+df_log <- data.frame(pred_log.perf@x.values,pred_log.perf@y.values)
+
+colnames(df_log)<-c("FPR", "TPR")
+
+ggplot(df_log,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+
+  theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+
+
+#RANDOM FOREST
+
+
+RF_perf_out<-tuneRF(cb_train[,-31],cb_train[,31], ntree=1000)
+RF_perf_out<-data.frame(RF_perf_out)
+rfor.cb <-randomForest(Bankrupt.~., data=cb_train, localImp = TRUE, importance=TRUE,proximity=TRUE, mtry=20)
+rfor.predict<- data.frame(predict(rfor.cb, cb_test, type = "response"))
+rfor.predict$predict.rfor.cb..cb_test..type....response.. <- ifelse(rfor.predict$predict.rfor.cb..cb_test..type....response.. > 0.5, 1,0)
+
+var_imp_rforest<-data.frame(rfor.cb$importance)
+colnames(var_imp_rforest)<-c("Variable","Overall")
+var_imp_rforest[,1]<-rownames(var_imp_rforest)
+rownames(var_imp_rforest)<-seq(1:30)
+
+ggplot(var_imp_rforest, aes(y=reorder(Variable,Overall),x=Overall,color="red")) + 
+  geom_point() +
+  geom_segment(aes(x=0,xend=Overall,yend=Variable)) +
+  scale_color_discrete(name="Variable Group") +
+  xlab("Overall importance") +
+  ylab("Variable Name") + guides(color = FALSE, size = FALSE) + theme_bw()
+
+
+rfor.predict["Test"]<-as.factor(cb_test$Bankrupt.)
+
+colnames(rfor.predict)<-c("Predict","Test")
+
+rfor.predict$Predict <- as.factor(rfor.predict$Predict)
+
+rfor_cm <- confusionMatrix(rfor.predict$Predict, rfor.predict$Test)
+rfor_cm
+
+fourfoldplot(table(rfor.predict), color = c("red","turquoise"),conf.level = 0)
+
+pred_for<-prediction(as.numeric(rfor.predict$Predict),as.numeric(rfor.predict$Test))
+
+roc_for.perf <- performance(pred_for, measure = "tpr", x.measure = "fpr")
+
+phi_Bankruptcy_for<-performance(pred_for, "phi")
+phi_Bankruptcy_for@y.values[[1]][2]
+
+
+df_for <- data.frame (roc_for.perf@x.values,roc_for.perf@y.values)
+
+colnames(df_for)<-c("FPR", "TPR")
+
+ggplot(df_for,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+
+
+#BOOSTING
+
+#Setting the random seed for replication
+set.seed(123)
+
+#setting up cross-validation
+cvcontrol <- trainControl(method="repeatedcv", number = 10,
+                          allowParallel=TRUE)
+
+train.gbm <- train(as.factor(Bankrupt.) ~ ., 
+                   data=cb_train,
+                   method="gbm",
+                   verbose=F,
+                   trControl=cvcontrol)
+
+par(mar = c(6, 10, 4.5, 4.5))
+summary(train.gbm, cBars = 20,las = 1)
+
+
+gbm.classTrain <-  predict(train.gbm, 
+                           type="raw")
+head(gbm.classTrain)
+
+
+gbm.classTest <-  predict(train.gbm, 
+                          newdata = cb_test,
+                          type="raw")
+
+gbm.classTest <- data.frame(gbm.classTest)
+gbm.classTest["Test"]<-as.factor(cb_test$Bankrupt.)
+colnames(gbm.classTest)<-c("Predict","Test")
+
+gbm.classTest$Predict <- as.factor(gbm.classTest$Predict)
+
+gbm_cm <- confusionMatrix(gbm.classTest$Predict, gbm.classTest$Test)
+gbm_cm
+
+fourfoldplot(table(gbm.classTest), color = c("red","turquoise"),conf.level = 0)
+
+pred_gbm<-prediction(as.numeric(gbm.classTest$Predict),as.numeric(gbm.classTest$Test))
+
+roc_gbm.perf <- performance(pred_gbm, measure = "tpr", x.measure = "fpr")
+
+phi_Bankruptcy_GBM<-performance(pred_gbm, "phi")
+phi_Bankruptcy_GBM@y.values[[1]][2]
+
+
+df_gbm <- data.frame (roc_gbm.perf@x.values,roc_gbm.perf@y.values)
+
+colnames(df_gbm)<-c("FPR", "TPR")
+
+ggplot(df_gbm,aes(FPR,TPR))+geom_point(color="red")+geom_line(color="red")+ggtitle("ROC CURVE")+
+  theme_bw()+theme(axis.text=element_text(size=16),axis.title=element_text(size=14,face="bold"))
+
+###CAUSALITY
+
+#PCalg
+
+suff.stat <- list(C=C.cb,n=nrow(cb_balanced))
+pc.fit <- pc(suff.stat, gaussCItest,p=ncol(cb_balanced),alpha=0.02)
+
+par(mfrow = c(1,1))
+plot(pc.fit)
+
+
+
+ida(1,31, C.cb, pc.fit@graph)
+ida(3,31, C.cb, pc.fit@graph)
+ida(9,31, C.cb, pc.fit@graph)
+ida(10,31,C.cb, pc.fit@graph)
+ida(11,31,C.cb, pc.fit@graph)
+ida(15,31,C.cb, pc.fit@graph)
+ida(16,31,C.cb, pc.fit@graph)
+ida(21,31,C.cb, pc.fit@graph)
+ida(27,31,C.cb, pc.fit@graph)
+
+
+```
+
